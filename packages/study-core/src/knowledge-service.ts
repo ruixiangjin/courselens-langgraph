@@ -6,6 +6,7 @@ export interface KnowledgeQuery {
   readonly course?: string
   readonly week?: number
   readonly limit?: number
+  readonly signal?: AbortSignal
 }
 
 /** Retrieval capability consumed by StudyController, independent of LightRAG. */

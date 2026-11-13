@@ -81,7 +81,7 @@ export interface StudyPostTurnObserver {
 
 /** Resource read capability exposed to the Main Agent tool bridge. */
 export interface StudyResourceReader {
-  readText(resourceId: string): Promise<ResourceText>
+  readText(resourceId: string, course?: string): Promise<ResourceText>
 }
 
 /** Memory recall capability exposed to the Main Agent tool bridge. */
@@ -128,6 +128,7 @@ export interface StudyAgentToolServices {
       readonly course?: string
       readonly week?: number
       readonly limit?: number
+      readonly signal?: AbortSignal
     }): Promise<readonly Evidence[]>
   }
   readonly resourceReader?: StudyResourceReader

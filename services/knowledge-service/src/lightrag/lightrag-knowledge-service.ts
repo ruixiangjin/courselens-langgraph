@@ -15,7 +15,7 @@ export interface LightRAGQueryClient {
   queryCourse(
     course: string,
     query: string,
-    options?: { readonly topK?: number; readonly chunkTopK?: number },
+    options?: { readonly topK?: number; readonly chunkTopK?: number; readonly signal?: AbortSignal },
   ): Promise<LightRAGQueryResult>
 }
 
@@ -82,6 +82,7 @@ export class LightRAGKnowledgeService implements KnowledgeService {
     const documentById = new Map(documents.map((document) => [document.documentId, document]))
     const result = await this.#client.queryCourse(course, text, {
       topK: this.#runtimeConfig.lightrag.query.topK,
+      ...(query.signal === undefined ? {} : { signal: query.signal }),
       chunkTopK: Math.min(Math.max(limit * 4, this.#runtimeConfig.lightrag.query.chunkTopK), 80),
     })
 

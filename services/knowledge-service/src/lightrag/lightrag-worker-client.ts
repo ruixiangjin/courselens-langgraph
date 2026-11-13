@@ -203,14 +203,16 @@ export class LightRAGWorkerClient {
   async queryCourse(
     course: string,
     query: string,
-    options: { readonly topK?: number; readonly chunkTopK?: number } = {},
+    options: { readonly topK?: number; readonly chunkTopK?: number; readonly signal?: AbortSignal } = {},
   ): Promise<LightRAGQueryResult> {
+    const timeout = AbortSignal.timeout(60_000)
+    const signal = options.signal === undefined ? timeout : AbortSignal.any([timeout, options.signal])
     const response = await this.#execute('query-course', {
       course,
       query,
       topK: options.topK ?? this.#runtimeConfig.lightrag.query.topK,
       chunkTopK: options.chunkTopK ?? this.#runtimeConfig.lightrag.query.chunkTopK,
-    })
+    }, signal)
     if (!isWorkerQuery(response)) throw invalidResponse('query-course', this.#workerPath, response)
     if (!isQueryResult(response.query)) {
       throw new Error(`LightRAG command query-course returned invalid query data from ${this.#workerPath}`)
@@ -221,6 +223,7 @@ export class LightRAGWorkerClient {
   async #execute(
     command: LightRAGWorkerCommand,
     extra: Record<string, unknown> = {},
+    signal?: AbortSignal,
   ): Promise<unknown> {
     const request = createWorkerRequest(command, {
       runtimeConfigPath: this.#runtimeConfig.configPath,
@@ -228,7 +231,7 @@ export class LightRAGWorkerClient {
       workingDir: this.#workingDir,
       ...extra,
     })
-    const result = await runWorker(this.#pythonPath, this.#workerPath, JSON.stringify(request), command)
+    const result = await runWorker(this.#pythonPath, this.#workerPath, JSON.stringify(request), command, signal)
     const response = parseWorkerResponse(result.stdout, request.requestId)
     if (!response.ok) {
       throw new Error(`LightRAG command ${command} failed (${response.error.code}): ${response.error.message}`)
@@ -245,11 +248,13 @@ async function runWorker(
   workerPath: string,
   request: string,
   command: string,
+  signal?: AbortSignal,
 ): Promise<{ readonly stdout: string; readonly stderr: string }> {
+  signal?.throwIfAborted()
   return await new Promise((resolvePromise, reject) => {
     let child
     try {
-      child = spawn(pythonPath, [workerPath], { stdio: ['pipe', 'pipe', 'pipe'] })
+      child = spawn(pythonPath, [workerPath], { stdio: ['pipe', 'pipe', 'pipe'], signal, killSignal: 'SIGKILL' })
     } catch (error) {
       reject(new Error(`Could not start LightRAG worker at ${workerPath} with ${pythonPath}: ${errorMessage(error)}`))
       return
@@ -271,6 +276,7 @@ async function runWorker(
       }
       resolvePromise(output)
     })
+    child.stdin.on('error', reject)
     child.stdin.end(request)
   })
 }

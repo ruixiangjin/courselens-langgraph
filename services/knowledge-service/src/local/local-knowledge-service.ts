@@ -128,9 +128,9 @@ export class LocalKnowledgeService {
   }
 
   /** Read UTF-8 content for Markdown, QMD, code, data, and ordinary text resources. */
-  async readText(resourceId: string): Promise<ResourceText> {
+  async readText(resourceId: string, course?: string): Promise<ResourceText> {
     const resource = this.#resources.get(resourceId)
-    if (resource === undefined) throw new Error(`Unknown resource id: ${resourceId}`)
+    if (resource === undefined || (course !== undefined && resource.course !== course)) throw new Error(`Unknown resource id: ${resourceId}`)
     if (!resource.textReadable) throw new UnsupportedResourceReadError(resource)
     return { resource, content: await readFile(resource.path, 'utf8') }
   }

@@ -7,7 +7,9 @@
   "dependencies": {
     "@langchain/core": "1.4.0",
     "@langchain/langgraph": "1.7.4",
-    "@langchain/openai": "^1.0.0",
-    "@monash-study/study-core": "workspace:*"
+    "@langchain/openai": "1.8.4",
+    "@monash-study/study-core": "workspace:*",
+    "@monash-study/shared-types": "workspace:*",
+    "zod": "4.4.3"
   }
 }
