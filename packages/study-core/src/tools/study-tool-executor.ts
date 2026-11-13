@@ -1,6 +1,6 @@
 import type { Evidence } from '@monash-study/shared-types'
 
-import type { StudyAgentToolServices, StudyTurnInput } from '../agent-runtime.js'
+import type { StudyAgentToolServices, StudyMemoryReader, StudentMemoryContext, StudyTurnInput } from '../agent-runtime.js'
 
 export async function executeKnowledgeTool(
   name: 'search_knowledge' | 'get_resource',
@@ -148,4 +148,34 @@ function toModelFacingLocator(value: unknown): Record<string, unknown> | undefin
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+export async function recallStudyMemory(reader: StudyMemoryReader, input: Parameters<StudyMemoryReader['recall']>[0]) {
+  try {
+    const memories = await reader.recall(input)
+    return { query: input.query, memories: memories.map(toMemoryToolValue) }
+  } catch {
+    throw new Error('Memory recall failed')
+  }
+}
+
+function toMemoryToolValue(context: StudentMemoryContext): unknown {
+  const memory = context.memory
+  return {
+    memory: {
+      memoryId: memory.memoryId,
+      memoryKey: memory.memoryKey,
+      kind: memory.kind,
+      scope: memory.scope,
+      course: memory.course,
+      topic: memory.topic,
+      content: memory.content,
+      status: memory.status,
+      importance: memory.importance,
+      confidence: memory.confidence,
+      sourceType: memory.sourceType,
+    },
+    direct: context.direct,
+    score: context.score,
+  }
 }

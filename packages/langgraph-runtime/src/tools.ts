@@ -2,6 +2,7 @@ import { tool } from '@langchain/core/tools'
 import { z } from 'zod'
 import {
   executeKnowledgeTool,
+  recallStudyMemory,
   type StudyAgentToolServices,
   type StudyTurnInput,
 } from '@monash-study/study-core'
@@ -46,4 +47,23 @@ export function knowledgeTools(
       }),
     ]),
   ]
+}
+
+export function createMemoryRecallTool(services: StudyAgentToolServices, input: StudyTurnInput, recordAction: (name: string) => void) {
+  const reader = services.memoryReader
+  if (reader === undefined) return undefined
+  const course = input.courseContext?.courseCode
+  const topic = input.courseContext?.topic
+  return tool(async ({ query }) => {
+    recordAction('recall_memory')
+    return JSON.stringify(await recallStudyMemory(reader, {
+      query, limit: 4,
+      ...(course === undefined ? {} : { course }),
+      ...(topic === undefined ? {} : { topic }),
+    }))
+  }, {
+    name: 'recall_memory',
+    description: 'Recall relevant study preferences and learning context.',
+    schema: z.object({ query: z.string().trim().min(1) }),
+  })
 }

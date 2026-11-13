@@ -6,9 +6,8 @@ import type {
   StudyAgentToolServices,
   StudyMemoryManagementCommand,
   StudyTurnInput,
-  StudentMemoryContext,
 } from '@monash-study/study-core'
-import { executeKnowledgeTool, RESEARCH_SUBAGENT_ACTION_BUDGET } from '@monash-study/study-core'
+import { executeKnowledgeTool, recallStudyMemory, RESEARCH_SUBAGENT_ACTION_BUDGET } from '@monash-study/study-core'
 import { StudyRuntimeError } from '@monash-study/study-core'
 
 export interface StudyToolBridgeOptions {
@@ -169,19 +168,13 @@ export class StudyToolBridge {
         const topic = optionalString(args, 'topic')
         const limit = optionalInteger(args, 'limit')
         const globalLimit = optionalInteger(args, 'globalLimit')
-        let memories: readonly StudentMemoryContext[]
-        try {
-          memories = await this.#services.memoryReader.recall({
-            query,
-            ...(course === undefined ? {} : { course }),
-            ...(topic === undefined ? {} : { topic }),
-            ...(limit === undefined ? {} : { limit }),
-            ...(globalLimit === undefined ? {} : { globalLimit }),
-          })
-        } catch {
-          throw new Error('Memory recall failed')
-        }
-        return { query, memories: memories.map(toMemoryToolValue) }
+        return recallStudyMemory(this.#services.memoryReader, {
+          query,
+          ...(course === undefined ? {} : { course }),
+          ...(topic === undefined ? {} : { topic }),
+          ...(limit === undefined ? {} : { limit }),
+          ...(globalLimit === undefined ? {} : { globalLimit }),
+        })
       }
       case 'manage_memory': {
         if (this.#services.memoryManager === undefined) throw new Error('Memory management is unavailable')
@@ -301,27 +294,6 @@ function memoryManagementCommand(
     return { ...common, deleteIntent: 'explicit_user_forget' }
   }
   return common
-}
-
-function toMemoryToolValue(context: StudentMemoryContext): unknown {
-  const memory = context.memory
-  return {
-    memory: {
-      memoryId: memory.memoryId,
-      memoryKey: memory.memoryKey,
-      kind: memory.kind,
-      scope: memory.scope,
-      course: memory.course,
-      topic: memory.topic,
-      content: memory.content,
-      status: memory.status,
-      importance: memory.importance,
-      confidence: memory.confidence,
-      sourceType: memory.sourceType,
-    },
-    direct: context.direct,
-    score: context.score,
-  }
 }
 
 function requiredString(args: Record<string, unknown>, key: string): string {

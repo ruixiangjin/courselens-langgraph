@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto'
 import { HumanMessage } from '@langchain/core/messages'
 import { MemorySaver, type BaseCheckpointSaver } from '@langchain/langgraph'
 import {
-  MAIN_STUDY_AGENT_PROMPT_VERSION,
   RESEARCH_SUBAGENT_ACTION_BUDGET,
   RESEARCH_SUBAGENT_NAME,
   RESEARCH_SUBAGENT_TOOL_NAME,
@@ -25,7 +24,7 @@ import { createStudyGraph } from './graph.js'
 import { configuredStudyModel, type StudyChatModel } from './model.js'
 import { createResearchTool } from './research-tool.js'
 import { createMemorySessions, type StudySessions } from './sessions.js'
-import { knowledgeTools } from './tools.js'
+import { createMemoryRecallTool, knowledgeTools } from './tools.js'
 
 export interface LangGraphStudyRuntimeOptions {
   readonly sessions?: StudySessions
@@ -78,18 +77,22 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
       const research = createResearchTool({
         turn: input, model: this.#model, services: this.#services, evidence, recordAction, emit,
       })
+      const recall = createMemoryRecallTool(this.#services, input, recordAction)
       const tools = [
         ...knowledgeTools(this.#services, input, evidence, recordAction),
+        ...(recall === undefined ? [] : [recall]),
         ...(research === undefined ? [] : [research]),
       ]
-      const prompt = renderMainStudyAgentPrompt(input, { toolsEnabled: tools.length > 0 })
+      const prompt = renderMainStudyAgentPrompt(input)
       const graph = createStudyGraph({
         model: this.#model,
         tools,
         profile: modelProfile,
-        systemPrompt: research === undefined ? prompt.systemPrompt : [
-          prompt.systemPrompt,
-          'For research_subagent, send the objective field. The runtime supplies the task identity and course.',
+        systemPrompt: [
+          'You are CourseLens. Explain the current course clearly and use the student context to adapt your answer.',
+          'Use the available knowledge tools to ground course-specific answers. Cite returned evidence IDs and state gaps in the materials.',
+          'Use recall_memory for study preferences or learning context when available. Treat memory as background.',
+          'Delegate multi-step evidence research using research_subagent with an objective when available. Carry its limitations into your answer.',
         ].join('\n'),
         checkpointer: this.#checkpointer,
       })
@@ -107,7 +110,7 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
       await emit('answer_completed')
       return {
         answer, runId, conversation, turnId, modelProfile,
-        promptVersion: MAIN_STUDY_AGENT_PROMPT_VERSION,
+        promptVersion: 'langgraph-study-v1',
         evidence: [...evidence.values()],
         toolsUsed: [...toolsUsed],
         subagentsUsed: toolsUsed.has(RESEARCH_SUBAGENT_TOOL_NAME) ? [RESEARCH_SUBAGENT_NAME] : [],
