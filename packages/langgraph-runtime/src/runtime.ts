@@ -5,6 +5,9 @@ import { MemorySaver, type BaseCheckpointSaver } from '@langchain/langgraph'
 import {
   MAIN_STUDY_AGENT_PROMPT_VERSION,
   RESEARCH_SUBAGENT_ACTION_BUDGET,
+  RESEARCH_SUBAGENT_NAME,
+  RESEARCH_SUBAGENT_TOOL_NAME,
+  type AgentEvent,
   StudyRuntimeError,
   renderMainStudyAgentPrompt,
   toStudyRuntimeError,
@@ -20,6 +23,7 @@ import type { Evidence } from '@monash-study/shared-types'
 
 import { createStudyGraph } from './graph.js'
 import { configuredStudyModel, type StudyChatModel } from './model.js'
+import { createResearchTool } from './research-tool.js'
 import { knowledgeTools } from './tools.js'
 
 export interface LangGraphStudyRuntimeOptions {
@@ -45,9 +49,9 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
     const sessionId = input.conversation?.sessionId ?? randomUUID()
     const conversation = input.conversation ?? { sessionId, conversationId: sessionId }
     const turnId = randomUUID()
-    const emit = async (type: AgentEventType) => options.eventSink?.emit({
+    const emit = async (type: AgentEventType, details: Partial<AgentEvent> = {}) => options.eventSink?.emit({
       type, runId, sessionId, conversationId: conversation.conversationId, turnId, modelProfile,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString(), ...details,
     })
 
     try {
@@ -55,19 +59,31 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
       const evidence = new Map<string, Evidence>()
       const toolsUsed = new Set<string>()
       let researchActions = 0
-      const tools = knowledgeTools(this.#services, input, evidence, name => {
-        if (researchActions >= RESEARCH_SUBAGENT_ACTION_BUDGET) {
-          throw new Error('Research retrieval action budget exhausted')
+      const recordAction = (name: string) => {
+        if (name === 'search_knowledge' || name === 'get_resource') {
+          if (researchActions >= RESEARCH_SUBAGENT_ACTION_BUDGET) {
+            throw new Error('Research retrieval action budget exhausted')
+          }
+          researchActions += 1
         }
-        researchActions += 1
         toolsUsed.add(name)
+      }
+      const research = createResearchTool({
+        turn: input, model: this.#model, services: this.#services, evidence, recordAction, emit,
       })
+      const tools = [
+        ...knowledgeTools(this.#services, input, evidence, recordAction),
+        ...(research === undefined ? [] : [research]),
+      ]
       const prompt = renderMainStudyAgentPrompt(input, { toolsEnabled: tools.length > 0 })
       const graph = createStudyGraph({
         model: this.#model,
         tools,
         profile: modelProfile,
-        systemPrompt: prompt.systemPrompt,
+        systemPrompt: research === undefined ? prompt.systemPrompt : [
+          prompt.systemPrompt,
+          'For research_subagent, send the objective field. The runtime supplies the task identity and course.',
+        ].join('\n'),
         checkpointer: this.#checkpointer,
       })
       await emit('model_started')
@@ -83,7 +99,10 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
       return {
         answer, runId, conversation, turnId, modelProfile,
         promptVersion: MAIN_STUDY_AGENT_PROMPT_VERSION,
-        evidence: [...evidence.values()], toolsUsed: [...toolsUsed], subagentsUsed: [], researchActions,
+        evidence: [...evidence.values()],
+        toolsUsed: [...toolsUsed],
+        subagentsUsed: toolsUsed.has(RESEARCH_SUBAGENT_TOOL_NAME) ? [RESEARCH_SUBAGENT_NAME] : [],
+        researchActions,
       }
     } catch (error) {
       if (options.signal?.aborted) {

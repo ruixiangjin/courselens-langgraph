@@ -14,8 +14,10 @@ export function createStudyGraph(input: {
   readonly profile: ModelProfile
   readonly systemPrompt: string
   readonly tools: StructuredToolInterface[]
-  readonly checkpointer: BaseCheckpointSaver
+  readonly checkpointer: BaseCheckpointSaver | false
+  readonly maxModelSteps?: number
 }) {
+  const maxModelSteps = input.maxModelSteps ?? MAX_MODEL_STEPS
   const tools = new ToolNode(input.tools)
   let steps = 0
   return new StateGraph(StudyGraphState)
@@ -26,7 +28,7 @@ export function createStudyGraph(input: {
           [new SystemMessage(input.systemPrompt), ...state.messages],
           input.profile,
           config.signal,
-          steps < MAX_MODEL_STEPS ? input.tools : [],
+          steps < maxModelSteps ? input.tools : [],
         )],
       }
     })
@@ -43,7 +45,7 @@ export function createStudyGraph(input: {
     .addEdge(START, 'model')
     .addConditionalEdges('model', state => {
       const last = state.messages.at(-1)
-      return steps < MAX_MODEL_STEPS && AIMessage.isInstance(last) && last.tool_calls?.length ? 'tools' : END
+      return steps < maxModelSteps && AIMessage.isInstance(last) && last.tool_calls?.length ? 'tools' : END
     }, ['tools', END])
     .addEdge('tools', 'model')
     .compile({ checkpointer: input.checkpointer })
