@@ -24,20 +24,24 @@ import type { Evidence } from '@monash-study/shared-types'
 import { createStudyGraph } from './graph.js'
 import { configuredStudyModel, type StudyChatModel } from './model.js'
 import { createResearchTool } from './research-tool.js'
+import { createMemorySessions, type StudySessions } from './sessions.js'
 import { knowledgeTools } from './tools.js'
 
 export interface LangGraphStudyRuntimeOptions {
+  readonly sessions?: StudySessions
   readonly services?: StudyAgentToolServices
   readonly model?: StudyChatModel
   readonly checkpointer?: BaseCheckpointSaver
 }
 
 export class LangGraphStudyRuntime implements StudyAgentRuntime {
+  readonly #sessions: StudySessions
   readonly #services: StudyAgentToolServices
   readonly #model: StudyChatModel
   readonly #checkpointer: BaseCheckpointSaver
 
   constructor(options: LangGraphStudyRuntimeOptions = {}) {
+    this.#sessions = options.sessions ?? createMemorySessions()
     this.#services = options.services ?? {}
     this.#model = options.model ?? configuredStudyModel
     this.#checkpointer = options.checkpointer ?? new MemorySaver()
@@ -48,6 +52,9 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
     const modelProfile = options.modelProfile ?? 'fast'
     const sessionId = input.conversation?.sessionId ?? randomUUID()
     const conversation = input.conversation ?? { sessionId, conversationId: sessionId }
+    if (conversation.conversationId !== sessionId) {
+      throw toStudyRuntimeError(undefined, 'SESSION_ERROR')
+    }
     const turnId = randomUUID()
     const emit = async (type: AgentEventType, details: Partial<AgentEvent> = {}) => options.eventSink?.emit({
       type, runId, sessionId, conversationId: conversation.conversationId, turnId, modelProfile,
@@ -87,10 +94,12 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
         checkpointer: this.#checkpointer,
       })
       await emit('model_started')
-      const result = await graph.invoke({ messages: [new HumanMessage(prompt.userPrompt)] }, {
+      const result = await this.#sessions.run({
+        id: sessionId, course: input.courseContext?.courseCode ?? null, existing: input.conversation !== undefined,
+      }, () => graph.invoke({ messages: [new HumanMessage(prompt.userPrompt)] }, {
         configurable: { thread_id: sessionId },
         ...(options.signal === undefined ? {} : { signal: options.signal }),
-      })
+      }))
       const message = result.messages.at(-1)
       const answer = message?.type === 'ai' ? message.text.trim() : ''
       if (!answer) throw toStudyRuntimeError(undefined, 'MODEL_ERROR')

@@ -22,7 +22,8 @@
     "ui": "node --import tsx/esm scripts/ui.ts",
     "ui:setup": "node --import tsx/esm scripts/ui-setup.ts",
     "ui:verify-package": "node --import tsx/esm scripts/verify-dsh-ui-package.ts",
-    "agent:graph": "node --import tsx scripts/langgraph-study.ts"
+    "agent:graph": "node --import tsx scripts/langgraph-study.ts",
+    "checkpoint:init": "node --import tsx scripts/init-checkpoints.ts"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

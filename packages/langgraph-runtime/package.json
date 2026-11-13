@@ -10,6 +10,11 @@
     "@langchain/openai": "1.8.4",
     "@monash-study/study-core": "workspace:*",
     "@monash-study/shared-types": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "@langchain/langgraph-checkpoint-postgres": "1.1.3",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.0"
   }
 }

@@ -15,3 +15,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@langchain/langgraph-sdk@1.16.0'
   - '@langchain/langgraph@1.7.4'
+  - '@langchain/langgraph-checkpoint-postgres@1.1.3'
