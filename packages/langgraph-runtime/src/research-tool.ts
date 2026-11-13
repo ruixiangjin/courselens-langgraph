@@ -31,7 +31,7 @@ export function createResearchTool(input: {
     if (tasks >= 2) throw new Error('Research delegation budget exhausted')
     tasks += 1
     const task: ResearchTask = {
-      taskId: config?.toolCallId || `research-${tasks}`,
+      taskId: config?.toolCall?.id || `research-${tasks}`,
       objective,
       course: context.courseCode,
       ...(context.week === undefined ? {} : { week: context.week }),

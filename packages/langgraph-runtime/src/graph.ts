@@ -2,7 +2,7 @@ import { AIMessage, SystemMessage } from '@langchain/core/messages'
 import type { StructuredToolInterface } from '@langchain/core/tools'
 import { END, START, StateGraph, type BaseCheckpointSaver } from '@langchain/langgraph'
 import { ToolNode } from '@langchain/langgraph/prebuilt'
-import type { ModelProfile } from '@monash-study/study-core'
+import { toStudyRuntimeError, type ModelProfile } from '@monash-study/study-core'
 
 import type { StudyChatModel } from './model.js'
 import { StudyGraphState } from './state.js'
@@ -23,14 +23,17 @@ export function createStudyGraph(input: {
   return new StateGraph(StudyGraphState)
     .addNode('model', async (state, config) => {
       steps += 1
-      return {
-        messages: [await input.model(
-          [new SystemMessage(input.systemPrompt), ...state.messages],
-          input.profile,
-          config.signal,
-          steps < maxModelSteps ? input.tools : [],
-        )],
+      const availableTools = steps < maxModelSteps ? input.tools : []
+      const message = await input.model(
+        [new SystemMessage(input.systemPrompt), ...state.messages],
+        input.profile,
+        config.signal,
+        availableTools,
+      )
+      if (message.invalid_tool_calls?.length || (message.tool_calls?.length && availableTools.length === 0)) {
+        throw toStudyRuntimeError(undefined, 'MODEL_ERROR')
       }
+      return { messages: [message] }
     })
     .addNode('tools', async (state, config) => {
       const last = state.messages.at(-1)

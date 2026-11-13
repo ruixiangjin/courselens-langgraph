@@ -120,7 +120,7 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
       if (options.signal?.aborted) {
         throw new StudyRuntimeError('ABORTED', 'The Study Agent turn was aborted.', { cause: error })
       }
-      throw toStudyRuntimeError(error, 'MODEL_ERROR')
+      throw toStudyRuntimeError(error, 'RUNTIME_ERROR')
     }
   }
 }
