@@ -9,10 +9,11 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@monash-study/dsh-integration": "workspace:*",
     "@monash-study/knowledge-service": "workspace:*",
     "@monash-study/memory-service": "workspace:*",
     "@monash-study/study-controller": "workspace:*",
-    "@monash-study/study-core": "workspace:*"
+    "@monash-study/study-core": "workspace:*",
+    "@monash-study/langgraph-runtime": "workspace:*",
+    "@monash-study/shared-types": "workspace:*"
   }
 }

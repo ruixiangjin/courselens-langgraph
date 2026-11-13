@@ -54,7 +54,7 @@ const agentEvent = () => z.object({
   taskId: z.string().optional(),
   errorCode: z.union([
     z.literal('INVALID_INPUT'), z.literal('SESSION_ERROR'), z.literal('MODEL_ERROR'),
-    z.literal('HARNESS_ERROR'), z.literal('ABORTED'), z.literal('CONCURRENT_RUN'),
+    z.literal('RUNTIME_ERROR'), z.literal('HARNESS_ERROR'), z.literal('ABORTED'), z.literal('CONCURRENT_RUN'),
     z.literal('UNKNOWN'), z.literal('STUDENT_CONTEXT_FAILED'),
     z.literal('MEMORY_OBSERVATION_FAILED'), z.literal('SUBAGENT_FAILED'),
   ]).optional(),
@@ -111,7 +111,7 @@ const turnResponse = () => z.union([
     status: z.literal('failed'),
     errorCode: z.union([
       z.literal('INVALID_INPUT'), z.literal('SESSION_ERROR'), z.literal('MODEL_ERROR'),
-      z.literal('HARNESS_ERROR'), z.literal('ABORTED'), z.literal('CONCURRENT_RUN'), z.literal('UNKNOWN'),
+      z.literal('RUNTIME_ERROR'), z.literal('HARNESS_ERROR'), z.literal('ABORTED'), z.literal('CONCURRENT_RUN'), z.literal('UNKNOWN'),
     ]),
     message: z.string(),
   }),

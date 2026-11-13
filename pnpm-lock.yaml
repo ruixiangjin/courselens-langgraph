@@ -96,9 +96,15 @@ importers:
       '@monash-study/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      '@monash-study/study-application':
+        specifier: workspace:*
+        version: link:../study-application
       '@monash-study/study-controller':
         specifier: workspace:*
         version: link:../study-controller
+      '@monash-study/study-core':
+        specifier: workspace:*
+        version: link:../study-core
       zod:
         specifier: ^4.4.3
         version: 4.6.5
@@ -207,15 +213,18 @@ importers:
 
   packages/study-application:
     dependencies:
-      '@monash-study/dsh-integration':
-        specifier: workspace:*
-        version: link:../dsh-integration
       '@monash-study/knowledge-service':
         specifier: workspace:*
         version: link:../../services/knowledge-service
+      '@monash-study/langgraph-runtime':
+        specifier: workspace:*
+        version: link:../langgraph-runtime
       '@monash-study/memory-service':
         specifier: workspace:*
         version: link:../../services/memory-service
+      '@monash-study/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       '@monash-study/study-controller':
         specifier: workspace:*
         version: link:../study-controller

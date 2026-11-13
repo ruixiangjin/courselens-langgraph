@@ -76,6 +76,7 @@ export function errorLabel(code: StudyRuntimeErrorCode): string {
     case 'INVALID_INPUT': return 'Invalid question'
     case 'SESSION_ERROR': return 'Conversation could not be continued'
     case 'MODEL_ERROR': return 'Model returned no answer'
+    case 'RUNTIME_ERROR':
     case 'HARNESS_ERROR': return 'Agent runtime failed'
     case 'ABORTED': return 'Request cancelled'
     case 'CONCURRENT_RUN': return 'Another study request is running'

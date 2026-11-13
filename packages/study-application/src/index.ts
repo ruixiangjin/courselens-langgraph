@@ -18,10 +18,7 @@ import {
   loadRuntimeConfig,
   type LoadedRuntimeConfig,
 } from '@monash-study/knowledge-service'
-import type {
-  DeepSeekHarnessDriver,
-  DeepSeekHarnessRuntimeOptions,
-} from '@monash-study/dsh-integration'
+import { LangGraphStudyRuntime, type LangGraphStudyRuntimeOptions } from '@monash-study/langgraph-runtime'
 import {
   DefaultModelPolicy,
   MemoryStudentContextBuilder,
@@ -43,7 +40,7 @@ import {
 import { StudyController, type StudyControllerOptions } from '@monash-study/study-controller'
 import type { ResourceManifest } from '@monash-study/shared-types'
 
-export interface StudyApplicationOptions {
+export interface StudyApplicationOptions extends Pick<LangGraphStudyRuntimeOptions, 'model' | 'checkpointer' | 'sessions'> {
   readonly applicationRoot?: string
   readonly configPath?: string
   readonly runtimeConfig?: LoadedRuntimeConfig
@@ -63,10 +60,6 @@ export interface StudyApplicationOptions {
   readonly runtime?: StudyAgentRuntime
   /** Build the runtime after the product tool services have been composed. */
   readonly runtimeFactory?: (toolServices: StudyAgentToolServices) => StudyAgentRuntime
-  readonly harness?: DeepSeekHarnessDriver
-  readonly createHarness?: DeepSeekHarnessRuntimeOptions['createHarness']
-  readonly harnessOptions?: DeepSeekHarnessRuntimeOptions['harnessOptions']
-  readonly promptPatchPath?: string
   readonly modelPolicy?: ModelPolicy
   readonly eventSink?: AgentEventSink
   readonly runIdFactory?: () => string
@@ -122,7 +115,12 @@ export async function createStudyApplication(
   }
   const runtime = options.runtime
     ?? options.runtimeFactory?.(toolServices)
-    ?? await createLegacyRuntime(options, runtimeConfig.applicationRoot, toolServices)
+    ?? new LangGraphStudyRuntime({
+      services: toolServices,
+      ...(options.model === undefined ? {} : { model: options.model }),
+      ...(options.checkpointer === undefined ? {} : { checkpointer: options.checkpointer }),
+      ...(options.sessions === undefined ? {} : { sessions: options.sessions }),
+    })
   const studentContextBuilder = options.studentContextBuilder === undefined
     ? memoryReader === undefined || memoryReader === null ? undefined : new MemoryStudentContextBuilder(memoryReader)
     : options.studentContextBuilder
@@ -147,8 +145,8 @@ export async function createStudyApplication(
     runTurn(input, runOptions = {}) {
       if (closed) {
         return Promise.reject(new StudyRuntimeError(
-          'HARNESS_ERROR',
-          'DeepSeek Harness could not complete the Study Agent turn.',
+          'RUNTIME_ERROR',
+          'The Study Agent application is closed.',
         ))
       }
       if (active) {
@@ -173,23 +171,6 @@ export async function createStudyApplication(
       }
     },
   }
-}
-
-/** Keep the historical SDK runtime off the current Web module graph. */
-async function createLegacyRuntime(
-  options: StudyApplicationOptions,
-  applicationRoot: string,
-  toolServices: StudyAgentToolServices,
-): Promise<StudyAgentRuntime> {
-  const { DeepSeekHarnessRuntime } = await import('@monash-study/dsh-integration')
-  return new DeepSeekHarnessRuntime({
-    ...(options.harness === undefined ? {} : { harness: options.harness }),
-    ...(options.createHarness === undefined ? {} : { createHarness: options.createHarness }),
-    ...(options.harnessOptions === undefined ? {} : { harnessOptions: options.harnessOptions }),
-    ...(options.promptPatchPath === undefined ? {} : { promptPatchPath: options.promptPatchPath }),
-    applicationRoot,
-    toolServices,
-  })
 }
 
 function createMemoryService(
