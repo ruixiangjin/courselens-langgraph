@@ -99,6 +99,10 @@ def convert(path: Path) -> dict[str, Any]:
     return {
         "markdown": markdown,
         "pageNumbers": pages,
+        "pageText": [
+            {"page": page, "text": result.document.export_to_markdown(page_no=page)}
+            for page in pages
+        ] if path.suffix.lower() == ".pdf" else [],
         "regions": picture_regions + table_regions,
         "inputFormat": path.suffix.lower().lstrip("."),
         "doclingVersion": docling.__version__,

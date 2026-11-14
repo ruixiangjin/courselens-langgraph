@@ -138,7 +138,7 @@ function toEvidence(
     resourceSource: document.source,
     contentType: document.contentType,
     sourcePath: document.sourcePath,
-    locator: document.locator,
+    locator: locatorWithoutPageText(document.locator),
     sourceHash: document.sourceHash,
     normalizedHash: document.normalizedHash,
     normalizationVersion: document.normalizationVersion,
@@ -158,6 +158,10 @@ function toEvidence(
   } satisfies Omit<Evidence, 'course' | 'score'>
   const withCourse = document.course === null ? base : { ...base, course: document.course }
   return chunk.score === undefined ? withCourse : { ...withCourse, score: chunk.score }
+}
+
+function locatorWithoutPageText({ pageText: _pageText, ...locator }: NormalizedDocument['locator']) {
+  return locator
 }
 
 function normalizeLimit(value: number | undefined): number {

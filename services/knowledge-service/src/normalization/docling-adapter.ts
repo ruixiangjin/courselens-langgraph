@@ -7,6 +7,7 @@ import type { NormalizedRegion } from '@monash-study/shared-types'
 export interface DoclingConversion {
   readonly markdown: string
   readonly pageNumbers: readonly number[]
+  readonly pageText: readonly { readonly page: number; readonly text: string }[]
   readonly regions: readonly NormalizedRegion[]
   readonly inputFormat: string
   readonly doclingVersion: string
@@ -71,6 +72,8 @@ function parseConversion(value: unknown, path: string): DoclingConversion {
   if (!isRecord(value)
     || typeof value.markdown !== 'string'
     || !Array.isArray(value.pageNumbers)
+    || !Array.isArray(value.pageText)
+    || !value.pageText.every(page => isRecord(page) && Number.isInteger(page.page) && typeof page.text === 'string')
     || !Array.isArray(value.regions)
     || typeof value.inputFormat !== 'string'
     || typeof value.doclingVersion !== 'string'

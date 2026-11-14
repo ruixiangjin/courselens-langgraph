@@ -11,7 +11,7 @@ const DOCLING_EXTENSIONS = new Set(['docx', 'pdf', 'pptx'])
 /** Thin Resource-to-Docling adapter for PDF and modern Office documents. */
 export class DocumentNormalizer implements ResourceNormalizer {
   readonly id = 'docling-document'
-  readonly version = '1-docling-2.129.0'
+  readonly version = '2-docling-2.129.0'
   readonly #docling: DoclingAdapter | undefined
 
   constructor(docling?: DoclingAdapter) {
@@ -35,6 +35,7 @@ export class DocumentNormalizer implements ResourceNormalizer {
       locator: {
         kind: 'document',
         pageNumbers: converted.pageNumbers,
+        ...(converted.pageText.length === 0 ? {} : { pageText: converted.pageText }),
         regions: converted.regions,
         metadata: {
           inputFormat: converted.inputFormat,

@@ -29,6 +29,7 @@ export interface NormalizedLocator {
   readonly threadId?: string
   readonly threadNumber?: number
   readonly pageNumbers?: readonly number[]
+  readonly pageText?: readonly { readonly page: number; readonly text: string }[]
   readonly regions?: readonly NormalizedRegion[]
   readonly metadata?: Readonly<Record<string, string | number | boolean | null>>
 }
