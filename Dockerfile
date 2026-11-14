@@ -5,4 +5,4 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 USER node
 EXPOSE 8080
-CMD ["pnpm", "start"]
+CMD ["node", "--import", "tsx", "scripts/courselens-server.ts"]
