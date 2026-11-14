@@ -67,3 +67,45 @@ test('web study turns enforce ownership, replay events, approve once and recover
     await store.close()
   }
 })
+
+test('a failed tutor turn resumes from PostgreSQL without redoing understanding', { skip: !database }, async () => {
+  const store = new StudyStore(database!)
+  const persistence = createStudyPersistence(database!)
+  await store.setup()
+  await persistence.setup()
+  let understand = 0
+  let tutor = 0
+  const createApplication = () => createStudyApplication({
+    checkpointer: persistence.checkpointer, sessions: persistence.sessions,
+    memoryService: null, resourceReader: null, knowledgeService: demoKnowledge,
+    model: async (...args) => {
+      const role = args[0][0]?.text ?? ''
+      if (role.includes('Role: understanding')) understand += 1
+      if (role.includes('Role: tutor') && ++tutor === 1) throw new Error('Injected failure')
+      return demoModel(...args)
+    },
+  })
+  let application = await createApplication()
+  const api = await createStudyServer({
+    store, applicationFor: async () => application,
+    principals: [{ student: 'restart-student', token: 'restart-token', role: 'student' }],
+  })
+  try {
+    const headers = { authorization: 'Bearer restart-token' }
+    const payload = { session: randomUUID(), turn: randomUUID(), question: 'Explain BFS' }
+    const request = { method: 'POST' as const, url: '/api/turns', headers, payload }
+    assert.equal((await api.inject(request)).statusCode, 500)
+    await application.close()
+    application = await createApplication()
+    const resumed = await api.inject(request)
+    assert.equal(resumed.statusCode, 200, resumed.body)
+    assert.match(resumed.json().answer, /layer/)
+    assert.equal(understand, 1)
+    assert.equal(tutor, 2)
+  } finally {
+    await api.close()
+    await application.close()
+    await persistence.close()
+    await store.close()
+  }
+})
