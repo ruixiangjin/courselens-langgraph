@@ -13,4 +13,3 @@ data/normalized/
 resources/resources.json
 config/sources.json
 config/sources.local.json
-vendor/deepseek-harness/.monash-study/

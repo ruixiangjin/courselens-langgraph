@@ -7,7 +7,7 @@ export interface StudyToolRequest {
   readonly arguments: Readonly<Record<string, unknown>>
 }
 
-/** Tool capability exposed to the controller before DSH tool registration. */
+/** Tool capability exposed to the controller for tool registration. */
 export interface StudyTool {
   readonly name: string
   execute(request: StudyToolRequest): Promise<readonly Evidence[]>

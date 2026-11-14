@@ -16,7 +16,7 @@ export type ModelTask = 'main_agent' | 'research_agent'
 /** Logical model choices exposed to product code. Provider names stay outside this layer. */
 export type ModelProfile = 'fast' | 'strong'
 
-/** Harness-owned conversation identity carried between Study Agent turns. */
+/** Conversation identity carried between Study Agent turns. */
 export interface StudyConversationRef {
   readonly sessionId: string
   readonly conversationId: string
@@ -189,18 +189,17 @@ export class InMemoryAgentEventSink implements AgentEventSink {
   }
 }
 
-/** Stable runtime failure categories exposed above the Harness adapter. */
+/** Stable runtime failure categories exposed by the study application. */
 export type StudyRuntimeErrorCode =
   | 'INVALID_INPUT'
   | 'SESSION_ERROR'
   | 'MODEL_ERROR'
   | 'RUNTIME_ERROR'
-  | 'HARNESS_ERROR'
   | 'ABORTED'
   | 'CONCURRENT_RUN'
   | 'UNKNOWN'
 
-/** Domain error boundary for provider and Harness failures. */
+/** Domain error boundary for model and runtime failures. */
 export class StudyRuntimeError extends Error {
   readonly code: StudyRuntimeErrorCode
 
@@ -219,7 +218,7 @@ export interface StudyTurnOptions {
   readonly runId?: string
 }
 
-/** Stable result DTO; Harness internals are adapted before reaching this type. */
+/** Stable result DTO. */
 export interface StudyTurnResult {
   readonly runId: string
   readonly answer: string
@@ -265,7 +264,6 @@ function runtimeErrorMessage(code: StudyRuntimeErrorCode): string {
     case 'SESSION_ERROR': return 'The Study Agent conversation could not be opened or continued.'
     case 'MODEL_ERROR': return 'The Study Agent model did not return a usable answer.'
     case 'RUNTIME_ERROR': return 'The Study Agent runtime could not complete the turn.'
-    case 'HARNESS_ERROR': return 'DeepSeek Harness could not complete the Study Agent turn.'
     case 'ABORTED': return 'The Study Agent turn was aborted.'
     case 'CONCURRENT_RUN': return 'Another Study Agent turn is already running.'
     case 'UNKNOWN': return 'The Study Agent runtime failed unexpectedly.'

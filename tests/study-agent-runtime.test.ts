@@ -2,11 +2,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
-  DeepSeekHarnessRuntime,
-  type DeepSeekHarnessDriver,
-  type DeepSeekHarnessRunResult,
-} from '@monash-study/dsh-integration'
-import {
   DefaultModelPolicy,
   InMemoryAgentEventSink,
   MAIN_STUDY_AGENT_PROMPT_VERSION,
@@ -70,64 +65,6 @@ test('StudyController validates, selects a model, injects runId, and returns the
   assert.equal(actual.answer, result.answer)
   assert.equal(policyCalls, 1)
   assert.deepEqual(calls, [{ query: 'Explain branches.', courseCode: 'FIT2109', profile: 'fast' }])
-})
-
-test('DeepSeekHarnessRuntime creates and then continues the same Harness conversation', async () => {
-  const calls: (string | undefined)[] = []
-  let turn = 0
-  const harness: DeepSeekHarnessDriver = {
-    session(sessionId) {
-      calls.push(sessionId)
-      const id = sessionId ?? 'harness-session-a'
-      return {
-        async run(_input): Promise<DeepSeekHarnessRunResult> {
-          turn += 1
-          return {
-            sessionId: id,
-            finalResponse: turn === 1 ? 'First answer.' : 'ORANGE-731',
-            events: [{ type: 'turn/start', data: { turn } }],
-          }
-        },
-      }
-    },
-  }
-  const sink = new InMemoryAgentEventSink()
-  const runtime = new DeepSeekHarnessRuntime({ harness })
-
-  const first = await runtime.runTurn({ query: 'Remember ORANGE-731.' }, { runId: 'run-a', eventSink: sink, modelProfile: 'fast' })
-  const second = await runtime.runTurn({ query: 'What marker?', conversation: first.conversation }, { runId: 'run-b', eventSink: sink, modelProfile: 'fast' })
-
-  assert.deepEqual(calls, [undefined, 'harness-session-a'])
-  assert.deepEqual(first.conversation, { sessionId: 'harness-session-a', conversationId: 'harness-session-a' })
-  assert.equal(second.turnId, '2')
-  assert.equal(second.answer, 'ORANGE-731')
-  assert.deepEqual(sink.events.map((event) => event.type), [
-    'model_started', 'model_completed', 'answer_completed',
-    'model_started', 'model_completed', 'answer_completed',
-  ])
-})
-
-test('StudyController emits the required success event order', async () => {
-  const sink = new InMemoryAgentEventSink()
-  const harness: DeepSeekHarnessDriver = {
-    session() {
-      return {
-        async run(): Promise<DeepSeekHarnessRunResult> {
-          return { sessionId: 'session-a', finalResponse: 'answer', events: [{ type: 'turn/start', data: { turn: 1 } }] }
-        },
-      }
-    },
-  }
-  const controller = new StudyController(
-    new DeepSeekHarnessRuntime({ harness }),
-    new DefaultModelPolicy(),
-    { eventSink: sink, runIdFactory: () => 'run-a' },
-  )
-
-  await controller.runTurn({ query: 'Question' })
-  assert.deepEqual(sink.events.map((event) => event.type), [
-    'run_started', 'model_started', 'model_completed', 'answer_completed', 'run_completed',
-  ])
 })
 
 test('StudyController awaits one completed-turn observation with real turn identity', async () => {
@@ -226,36 +163,4 @@ test('Post-turn observation failure is non-fatal and emits a safe lifecycle even
   assert.equal(sink.events[2]?.errorCode, 'MEMORY_OBSERVATION_FAILED')
   assert.equal(sink.events.some((event) => event.type === 'run_failed'), false)
   assert.equal(JSON.stringify(sink.events).includes('secret provider detail'), false)
-})
-
-test('Harness failures are translated once at the runtime boundary and emit one run_failed', async () => {
-  const sink = new InMemoryAgentEventSink()
-  const harness: DeepSeekHarnessDriver = {
-    session() {
-      return {
-        async run(): Promise<DeepSeekHarnessRunResult> {
-          throw new Error('raw provider detail should remain the cause')
-        },
-      }
-    },
-  }
-  let observationCalls = 0
-  const controller = new StudyController(
-    new DeepSeekHarnessRuntime({ harness }),
-    new DefaultModelPolicy(),
-    {
-      eventSink: sink,
-      runIdFactory: () => 'run-failure',
-      postTurnObserver: { async observe() { observationCalls += 1 } },
-    },
-  )
-
-  await assert.rejects(
-    controller.runTurn({ query: 'Question' }),
-    (error: unknown) => error instanceof StudyRuntimeError
-      && error.code === 'HARNESS_ERROR'
-      && error.message === 'DeepSeek Harness could not complete the Study Agent turn.',
-  )
-  assert.equal(observationCalls, 0)
-  assert.equal(sink.events.filter((event) => event.type === 'run_failed').length, 1)
 })

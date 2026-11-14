@@ -30,8 +30,8 @@ pnpm checkpoint:init
 pnpm agent:graph -- --fixture --scenario continuity --persist
 ```
 
-For live conversations, add `--persist` to the first call and pass the returned session ID as `--session ID` on subsequent calls. The existing browser interface is available through `pnpm ui:setup` and `pnpm ui`.
+For live conversations, add `--persist` to the first call and pass the returned session ID as `--session ID` on subsequent calls.
 
 ## License
 
-CourseLens source and documentation use the [MIT License](LICENSE). The bundled runtime and third-party components retain the license files distributed with their source under `vendor/`.
+CourseLens source and documentation use the [MIT License](LICENSE).

@@ -3,7 +3,7 @@ import type { StudentContext } from './agent-runtime.js'
 /** Stable logical identity used in product results and lifecycle events. */
 export const RESEARCH_SUBAGENT_NAME = 'research'
 
-/** DSH-facing tool name. The logical name above remains provider-neutral. */
+/** Tool name for delegated research. */
 export const RESEARCH_SUBAGENT_TOOL_NAME = 'research_subagent'
 
 /** Versioned independent prompt identity for the course research child. */

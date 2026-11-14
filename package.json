@@ -1,11 +1,11 @@
 {
-  "name": "monash-study-agent",
+  "name": "courselens",
   "version": "0.1.0",
   "private": true,
-  "description": "Local-first Monash learning agent product powered by DeepSeek Harness",
+  "description": "A local-first course study assistant using LangGraph",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && pnpm --filter @monash-study/dsh-ui-plugin bundle && pnpm run dsh:stage-ui && pnpm run ui:verify-package",
+    "build": "tsc -p tsconfig.build.json",
     "agent-smoke": "node --import tsx scripts/langgraph-study.ts",
     "agent-memory-smoke": "node --import tsx scripts/langgraph-study.ts --fixture --scenario memory",
     "agent-research-smoke": "node --import tsx scripts/langgraph-study.ts --fixture --scenario research",
@@ -16,24 +16,15 @@
     "scan": "tsx scripts/scan-resources.ts --config config/sources.local.json --output data/runtime/resources.json",
     "smoke:lightrag": "tsx scripts/smoke-lightrag.ts",
     "smoke:memory": "tsx scripts/memory-smoke.ts",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dsh:stage-ui": "node --import tsx/esm scripts/stage-dsh-ui-runtime.ts",
-    "ui": "node --import tsx/esm scripts/ui.ts",
-    "ui:setup": "node --import tsx/esm scripts/ui-setup.ts",
-    "ui:verify-package": "node --import tsx/esm scripts/verify-dsh-ui-package.ts",
     "agent:graph": "node --import tsx scripts/langgraph-study.ts",
     "checkpoint:init": "node --import tsx scripts/init-checkpoints.ts"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2"
-  },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@monash-study/dsh-integration": "workspace:*",
     "@types/node": "^22.20.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
@@ -47,5 +38,6 @@
     "@monash-study/study-controller": "workspace:*",
     "@monash-study/study-core": "workspace:*",
     "@monash-study/langgraph-runtime": "workspace:*"
-  }
+  },
+  "packageManager": "pnpm@12.5.1"
 }

@@ -4,13 +4,8 @@ packages:
   - services/*
 
 allowBuilds:
-  '@deepseek-ai/dsh-subprocess-local': true
-  '@google/genai': true
   # tsx uses esbuild's platform binary to execute TypeScript tests and scan commands.
   esbuild: true
-  koffi: true
-  node-pty: true
-  protobufjs: true
 
 minimumReleaseAgeExclude:
   - '@langchain/langgraph-sdk@1.16.0'

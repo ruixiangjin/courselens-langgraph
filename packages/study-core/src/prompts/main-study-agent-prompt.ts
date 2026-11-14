@@ -61,7 +61,7 @@ export interface MainStudyAgentPromptInput {
   readonly studentContext?: StudentContext
 }
 
-/** Prompt parts stay separate so later runtime integrations can map them to different Harness surfaces. */
+/** Prompt parts stay separate so later runtime integrations can map them to model messages. */
 export interface RenderedMainStudyAgentPrompt {
   readonly systemPrompt: string
   readonly runtimeContext: string
