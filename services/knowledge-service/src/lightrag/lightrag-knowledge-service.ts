@@ -139,6 +139,7 @@ function toEvidence(
     contentType: document.contentType,
     sourcePath: document.sourcePath,
     locator: locatorWithoutPageText(document.locator),
+    ...locatePage(document, chunk.content),
     sourceHash: document.sourceHash,
     normalizedHash: document.normalizedHash,
     normalizationVersion: document.normalizationVersion,
@@ -171,4 +172,12 @@ function normalizeLimit(value: number | undefined): number {
 
 function hash(value: string): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function locatePage(document: NormalizedDocument, content: string): { page?: number } {
+  const normalize = (text: string) => text.replace(/\s+/gu, ' ').trim()
+  const excerpt = normalize(content)
+  if (!excerpt) return {}
+  const matches = document.locator.pageText?.filter(item => normalize(item.text).includes(excerpt))
+  return matches?.length === 1 ? { page: matches[0]!.page } : {}
 }

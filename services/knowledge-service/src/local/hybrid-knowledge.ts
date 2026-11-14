@@ -3,7 +3,7 @@ import type { Evidence } from '@monash-study/shared-types'
 import type { KnowledgeQuery, KnowledgeService } from '@monash-study/study-core'
 import { NormalizedDocumentLoader } from '../normalization/normalized-document-loader.js'
 
-const words = (text: string): string[] => text.toLowerCase().match(/[\p{L}\p{N}_]+/gu) ?? []
+const words = (text: string): string[] => text.toLowerCase().match(/\p{Script=Han}|[^\p{Script=Han}\W]+|[\p{L}\p{N}_]/gu) ?? []
 
 export class HybridKnowledgeService implements KnowledgeService {
   readonly #loader: NormalizedDocumentLoader
@@ -13,10 +13,11 @@ export class HybridKnowledgeService implements KnowledgeService {
 
   async search(query: KnowledgeQuery): Promise<readonly Evidence[]> {
     if (!query.course) throw new Error('Knowledge query requires a course')
+    query.signal?.throwIfAborted()
     const limit = Math.min(12, Math.max(1, query.limit ?? 6))
     const candidates = await Promise.allSettled([
       this.semantic.search({ ...query, limit: limit * 2 }),
-      this.#keyword(query, limit * 2),
+      this.#keyword(query.course, query, limit * 2),
     ])
     query.signal?.throwIfAborted()
     if (candidates.every(result => result.status === 'rejected')) {
@@ -40,8 +41,7 @@ export class HybridKnowledgeService implements KnowledgeService {
       .slice(0, limit).map(({ item }) => item)
   }
 
-  async #keyword(query: KnowledgeQuery, limit: number): Promise<Evidence[]> {
-    const course = query.course!
+  async #keyword(course: string, query: KnowledgeQuery, limit: number): Promise<Evidence[]> {
     const terms = [...new Set(words(query.query))]
     const documents = await this.#loader.list({ course })
     query.signal?.throwIfAborted()
