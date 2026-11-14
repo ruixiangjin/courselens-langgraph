@@ -22,7 +22,8 @@
     "checkpoint:init": "node --import tsx scripts/init-checkpoints.ts",
     "start": "node --import tsx scripts/courselens-server.ts",
     "eval:study": "node --import tsx scripts/evaluate-courselens.ts",
-    "test:harness": "node --import tsx --test tests/study-routing.test.ts tests/study-web.test.ts tests/lightrag-knowledge-service.test.ts tests/memory-intelligence.test.ts tests/hybrid-knowledge.test.ts"
+    "test:harness": "node --import tsx --test tests/study-routing.test.ts tests/study-web.test.ts tests/lightrag-knowledge-service.test.ts tests/memory-intelligence.test.ts tests/hybrid-knowledge.test.ts",
+    "eval:retrieval": "node --import tsx scripts/evaluate-retrieval.ts"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

@@ -27,7 +27,7 @@ pnpm eval:study
 pnpm test:harness
 ```
 
-Set `COURSELENS_TEST_DATABASE_URL` to a disposable PostgreSQL database to include the ownership, duplicate-request and worker-recovery integration check. Replay results verify fixed behavior. Live retrieval and model quality require a separately labeled course dataset.
+Set `COURSELENS_TEST_DATABASE_URL` to a disposable PostgreSQL database to include the ownership, duplicate-request and worker-recovery integration check. Replay results verify fixed behavior. For a labeled live corpus, run `pnpm eval:retrieval cases.json` after indexing the courses. Each case contains `question`, `course`, optional `week`, and the `expectedDocumentIds` from the normalized documents. The script compares LightRAG and hybrid retrieval using Recall@4, Precision@4, HitRate@4, MRR, nDCG@4 and latency. Model quality requires a separately labeled answer set.
 
 ## Run the agent
 
