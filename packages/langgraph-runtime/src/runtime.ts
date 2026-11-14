@@ -71,11 +71,12 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
           turn: input, services: this.#services, model: this.#model, profile: modelProfile,
           checkpointer: this.#checkpointer, emit,
         })
+        type SupervisorState = Awaited<ReturnType<typeof graph.invoke>>
         await emit('model_started')
         const state = await this.#sessions.run({
           id: sessionId, course: input.courseContext?.courseCode ?? null, existing: input.conversation !== undefined,
           ...(options.allowCreateSession === true ? { allowCreate: true } : {}),
-        }, async () => {
+        }, async (): Promise<SupervisorState> => {
           const config = {
             configurable: { thread_id: `study-supervisor-v1:${sessionId}` },
             durability: 'sync' as const,
@@ -85,7 +86,7 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
             const saved = await graph.getState(config)
             if (saved.values.runId === runId) {
               if (saved.next.length) return graph.invoke(null, config)
-              if (saved.values.answer) return saved.values
+              if (saved.values.answer) return saved.values as SupervisorState
             }
           }
           return graph.invoke({
