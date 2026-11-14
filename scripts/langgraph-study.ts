@@ -52,6 +52,7 @@ async function runTurn(): Promise<void> {
   try {
     const application = await createStudyApplication({
       runtimeConfig,
+      ...(values.fixture ? { mode: 'legacy' as const } : {}),
       ...(values.fixture ? {
         model: fixtureModel(scenario),
         knowledgeService: fixtureKnowledge,

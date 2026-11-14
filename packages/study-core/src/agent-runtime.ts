@@ -140,6 +140,8 @@ export interface StudyAgentToolServices {
 export type AgentEventType =
   | 'run_started'
   | 'student_context_failed'
+  | 'study_routed'
+  | 'study_role_completed'
   | 'model_started'
   | 'model_completed'
   | 'answer_completed'
@@ -166,6 +168,7 @@ export interface AgentEvent {
   readonly resultCount?: number
   readonly evidenceCount?: number
   readonly subagentName?: string
+  readonly route?: string
   readonly taskId?: string
   readonly errorCode?: AgentEventErrorCode
 }
@@ -231,6 +234,9 @@ export interface StudyTurnResult {
   readonly subagentsUsed: readonly string[]
   /** Safe count of Knowledge/Resource retrieval actions in this StudyRun. */
   readonly researchActions: number
+  readonly plan?: { readonly goal: string; readonly exercises: readonly {
+    readonly activity: string; readonly minutes: number; readonly checkpoint: string
+  }[] }
 }
 
 /** Runtime abstraction consumed by StudyController. */

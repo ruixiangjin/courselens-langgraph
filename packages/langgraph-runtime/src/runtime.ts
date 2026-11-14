@@ -22,11 +22,13 @@ import type { Evidence } from '@monash-study/shared-types'
 
 import { createStudyGraph } from './graph.js'
 import { configuredStudyModel, type StudyChatModel } from './model.js'
+import { createStudySupervisor } from './supervisor.js'
 import { createResearchTool } from './research-tool.js'
 import { createMemorySessions, type StudySessions } from './sessions.js'
 import { createMemoryRecallTool, knowledgeTools } from './tools.js'
 
 export interface LangGraphStudyRuntimeOptions {
+  readonly mode?: 'supervisor' | 'legacy'
   readonly sessions?: StudySessions
   readonly services?: StudyAgentToolServices
   readonly model?: StudyChatModel
@@ -34,12 +36,14 @@ export interface LangGraphStudyRuntimeOptions {
 }
 
 export class LangGraphStudyRuntime implements StudyAgentRuntime {
+  readonly #mode: 'supervisor' | 'legacy'
   readonly #sessions: StudySessions
   readonly #services: StudyAgentToolServices
   readonly #model: StudyChatModel
   readonly #checkpointer: BaseCheckpointSaver
 
   constructor(options: LangGraphStudyRuntimeOptions = {}) {
+    this.#mode = options.mode ?? 'supervisor'
     this.#sessions = options.sessions ?? createMemorySessions()
     this.#services = options.services ?? {}
     this.#model = options.model ?? configuredStudyModel
@@ -62,6 +66,35 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
 
     try {
       options.signal?.throwIfAborted()
+      if (this.#mode === 'supervisor') {
+        const graph = createStudySupervisor({
+          turn: input, services: this.#services, model: this.#model, profile: modelProfile,
+          checkpointer: this.#checkpointer, emit,
+        })
+        await emit('model_started')
+        const state = await this.#sessions.run({
+          id: sessionId, course: input.courseContext?.courseCode ?? null, existing: input.conversation !== undefined,
+        }, () => graph.invoke({
+          messages: [new HumanMessage(input.query)],
+          intent: null, research: null, plan: null, draft: null, review: null, revision: 0, answer: '',
+        }, {
+          configurable: { thread_id: `study-supervisor-v1:${sessionId}` },
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
+        }))
+        await emit('model_completed')
+        await emit('answer_completed')
+        const published = state.answer === state.draft?.answer
+        const cited = new Set(published ? state.draft?.evidenceIds : [])
+        return {
+          answer: state.answer, runId, conversation, turnId, modelProfile,
+          promptVersion: 'study-supervisor-v1',
+          evidence: state.research?.evidence.filter(item => cited.has(item.evidenceId)) ?? [],
+          toolsUsed: state.research?.tools ?? [],
+          subagentsUsed: state.research?.actions ? ['research'] : [],
+          researchActions: state.research?.actions ?? 0,
+          ...(!published || !state.plan ? {} : { plan: state.plan }),
+        }
+      }
       const evidence = new Map<string, Evidence>()
       const toolsUsed = new Set<string>()
       let researchActions = 0

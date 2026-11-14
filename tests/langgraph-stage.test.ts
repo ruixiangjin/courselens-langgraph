@@ -16,6 +16,7 @@ import {
 test('runs a direct graph turn through the application and emits one terminal event', async () => {
   const sink = new InMemoryAgentEventSink()
   const app = await createStudyApplication({
+    mode: 'legacy',
     model: async () => new AIMessage('Graph answer'),
     knowledgeService: null, resourceReader: null, memoryService: null,
     eventSink: sink,
@@ -36,6 +37,7 @@ test('runs a direct graph turn through the application and emits one terminal ev
 test('collects cited evidence from a delegated research tool round trip', async () => {
   const sink = new InMemoryAgentEventSink()
   const app = await createStudyApplication({
+    mode: 'legacy',
     model: fixtureModel('research'),
     knowledgeService: fixtureKnowledge, resourceReader: null, memoryService: null,
     eventSink: sink,
@@ -57,6 +59,7 @@ test('reads study memory through the application and keeps it out of evidence', 
   let recalls = 0
   let observations = 0
   const app = await createStudyApplication({
+    mode: 'legacy',
     model: fixtureModel('memory'),
     knowledgeService: null, resourceReader: null, memoryService: null,
     memoryReader: { async recall() { recalls += 1; return [] } },

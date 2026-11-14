@@ -40,7 +40,7 @@ import {
 import { StudyController, type StudyControllerOptions } from '@monash-study/study-controller'
 import type { ResourceManifest } from '@monash-study/shared-types'
 
-export interface StudyApplicationOptions extends Pick<LangGraphStudyRuntimeOptions, 'model' | 'checkpointer' | 'sessions'> {
+export interface StudyApplicationOptions extends Pick<LangGraphStudyRuntimeOptions, 'model' | 'checkpointer' | 'sessions' | 'mode'> {
   readonly applicationRoot?: string
   readonly configPath?: string
   readonly runtimeConfig?: LoadedRuntimeConfig
@@ -117,6 +117,7 @@ export async function createStudyApplication(
     ?? options.runtimeFactory?.(toolServices)
     ?? new LangGraphStudyRuntime({
       services: toolServices,
+      ...(options.mode === undefined ? {} : { mode: options.mode }),
       ...(options.model === undefined ? {} : { model: options.model }),
       ...(options.checkpointer === undefined ? {} : { checkpointer: options.checkpointer }),
       ...(options.sessions === undefined ? {} : { sessions: options.sessions }),
