@@ -44,35 +44,49 @@ export function createStudySupervisor(input: {
         return { research: { evidence: [], findings: [], limitations: ['Course sources are unavailable.'], actions: 0, tools: [] } }
       }
       const previous = state.research
-      const taskId = 'research-' + state.revision
+      const focus = state.review?.reason ?? state.intent?.objective ?? turn.query
+      const compareMaterials = state.revision === 0 && /lecture|讲义|课件/iu.test(turn.query) && /tutorial|习题课/iu.test(turn.query)
+      const objectives = compareMaterials ? ['Lecture: ' + focus, 'Tutorial: ' + focus] : [focus]
       const evidence = new Map<string, Evidence>()
       const used = new Set(previous?.tools)
+      const remaining = RESEARCH_SUBAGENT_ACTION_BUDGET - (previous?.actions ?? 0)
+      const availableBudget = state.revision === 0 ? Math.max(0, remaining - 2) : remaining
+      const results = await Promise.all(objectives.map(async (objective, index) => {
+        const taskId = 'research-' + state.revision + '-' + index
+        const retrieved = new Map<string, Evidence>()
+        const toolNames = new Set<string>()
+        let actions = 0
+        const budget = Math.floor(availableBudget / objectives.length) + Number(index < availableBudget % objectives.length)
+        const task = {
+          taskId, course: course.courseCode, objective,
+          ...(course.week === undefined ? {} : { week: course.week }),
+          ...(course.topic === undefined ? {} : { topic: course.topic }),
+        }
+        const tools = knowledgeTools(input.services, turn, retrieved, name => {
+          if (actions >= budget) throw new Error('Research budget exhausted')
+          actions += 1
+          toolNames.add(name)
+        })
+        await emit('subagent_started', { taskId, subagentName: 'research' })
+        try {
+          const result = await researchCourse({ task, model, tools, evidence: retrieved, ...(config.signal ? { signal: config.signal } : {}) })
+          await emit('subagent_completed', { taskId, subagentName: 'research', evidenceCount: retrieved.size })
+          return { retrieved, toolNames, actions, findings: result.findings, limitations: result.limitations }
+        } catch {
+          config.signal?.throwIfAborted()
+          await emit('subagent_failed', { taskId, subagentName: 'research', errorCode: 'SUBAGENT_FAILED' })
+          return { retrieved, toolNames, actions, findings: [], limitations: ['Course research was temporarily unavailable.'] }
+        }
+      }))
       let actions = previous?.actions ?? 0
-      const focus = state.review?.reason ?? state.intent?.objective ?? turn.query
-      const task = {
-        taskId,
-        course: course.courseCode,
-        objective: focus,
-        ...(course.week === undefined ? {} : { week: course.week }),
-        ...(course.topic === undefined ? {} : { topic: course.topic }),
-      }
-      const tools = knowledgeTools(input.services, turn, evidence, name => {
-        if (actions >= RESEARCH_SUBAGENT_ACTION_BUDGET) throw new Error('Research budget exhausted')
-        actions += 1
-        used.add(name)
-      })
-      await emit('subagent_started', { taskId, subagentName: 'research' })
       let findings = previous?.findings ?? []
-      let limitations: string[]
-      try {
-        const result = await researchCourse({ task, model, tools, evidence, ...(config.signal ? { signal: config.signal } : {}) })
+      const limitations: string[] = []
+      for (const result of results) {
+        for (const [id, item] of result.retrieved) evidence.set(id, item)
+        for (const name of result.toolNames) used.add(name)
+        actions += result.actions
         findings = [...findings, ...result.findings.map(finding => ({ ...finding, evidenceIds: [...finding.evidenceIds] }))]
-        limitations = [...result.limitations]
-        await emit('subagent_completed', { taskId, subagentName: 'research', evidenceCount: evidence.size })
-      } catch {
-        config.signal?.throwIfAborted()
-        limitations = ['Course research was temporarily unavailable.']
-        await emit('subagent_failed', { taskId, subagentName: 'research', errorCode: 'SUBAGENT_FAILED' })
+        limitations.push(...result.limitations)
       }
       for (const [id, item] of evidence) {
         if (item.course !== course.courseCode) evidence.delete(id)

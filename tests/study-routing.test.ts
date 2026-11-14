@@ -33,6 +33,8 @@ test('routes a general question directly to the tutor', async () => {
 
 test('the verifier sends a focused repair back to research and only publishes the revised answer', async () => {
   const searches: string[] = []
+  let activeSearches = 0
+  let peakSearches = 0
   const objectives: string[] = []
   let reviews = 0
   const model: StudyChatModel = async (messages, _profile, _signal, tools) => {
@@ -43,7 +45,7 @@ test('the verifier sends a focused repair back to research and only publishes th
       goal: 'Practise BFS', exercises: [{ activity: 'Trace a graph', minutes: 15, checkpoint: 'Explain the queue' }],
     }))
     if (prompt.includes('Role: tutor')) return new AIMessage(JSON.stringify({
-      answer: objectives.length === 1 ? 'BFS always works [fit2004-lecture].' : 'BFS works on unweighted graphs [fit2004-lecture].',
+      answer: objectives.length === 2 ? 'BFS always works [fit2004-lecture].' : 'BFS works on unweighted graphs [fit2004-lecture].',
       evidenceIds: [evidence.evidenceId],
     }))
     if (prompt.includes('Role: independent verifier')) {
@@ -66,12 +68,18 @@ test('the verifier sends a focused repair back to research and only publishes th
     knowledgeService: { async search({ query, course }) {
       assert.equal(course, 'FIT2004')
       searches.push(query)
+      activeSearches += 1
+      peakSearches = Math.max(peakSearches, activeSearches)
+      await new Promise(resolve => setImmediate(resolve))
+      activeSearches -= 1
       return [evidence]
     } },
   })
   try {
-    const result = await app.runTurn({ query: 'Check the BFS lecture and plan practice', courseContext: { courseCode: 'FIT2004' } })
-    assert.deepEqual(searches, ['Find BFS evidence', 'Find the unweighted graph condition'])
+    const result = await app.runTurn({ query: 'Compare the BFS lecture and tutorial and plan practice', courseContext: { courseCode: 'FIT2004' } })
+    assert.deepEqual(searches.slice(0, 2).sort(), ['Lecture: Find BFS evidence', 'Tutorial: Find BFS evidence'])
+    assert.equal(searches[2], 'Find the unweighted graph condition')
+    assert.equal(peakSearches, 2)
     assert.equal(reviews, 2)
     assert.equal(result.answer, 'BFS works on unweighted graphs [fit2004-lecture].')
     assert.deepEqual(result.evidence, [evidence])
