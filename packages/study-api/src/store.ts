@@ -15,8 +15,9 @@ export class StudyStore {
       );
       CREATE TABLE IF NOT EXISTS courselens.turns (
         id uuid PRIMARY KEY, student text NOT NULL, session uuid NOT NULL REFERENCES courselens.web_sessions(id),
-        question text NOT NULL, status text NOT NULL, result jsonb
+        question text NOT NULL, status text NOT NULL, result jsonb, created_order bigserial
       );
+      ALTER TABLE courselens.turns ADD COLUMN IF NOT EXISTS created_order bigserial;
       CREATE TABLE IF NOT EXISTS courselens.turn_events (
         seq bigserial PRIMARY KEY, turn uuid NOT NULL REFERENCES courselens.turns(id), event jsonb NOT NULL
       );
@@ -58,7 +59,7 @@ export class StudyStore {
 
   async beginTurn(id: string, student: string, session: string, question: string) {
     const inserted = await this.pool.query(
-      "INSERT INTO courselens.turns VALUES ($1,$2,$3,$4,'running',NULL) ON CONFLICT DO NOTHING RETURNING id",
+      "INSERT INTO courselens.turns(id,student,session,question,status) VALUES ($1,$2,$3,$4,'running') ON CONFLICT DO NOTHING RETURNING id",
       [id, student, session, question],
     )
     if (inserted.rowCount) return undefined
@@ -68,7 +69,13 @@ export class StudyStore {
     )
     const previous = existing.rows[0]
     if (previous?.status === 'done' && previous.result) return previous.result
-    throw new StudyConflict('Use a new turn ID for a changed, failed, or interrupted request.')
+    if (!previous) throw new StudyConflict('The turn ID is already assigned to a different request.')
+    const latest = await this.pool.query(
+      'SELECT id FROM courselens.turns WHERE session=$1 ORDER BY created_order DESC LIMIT 1', [session],
+    )
+    if (latest.rows[0]?.id !== id) throw new StudyConflict('This session has a newer turn.')
+    await this.pool.query("UPDATE courselens.turns SET status='running' WHERE id=$1", [id])
+    return undefined
   }
 
   async finishTurn(id: string, result: StudyTurnResult | null) {

@@ -58,7 +58,7 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
     if (conversation.conversationId !== sessionId) {
       throw toStudyRuntimeError(undefined, 'SESSION_ERROR')
     }
-    const turnId = randomUUID()
+    const turnId = options.allowCreateSession ? runId : randomUUID()
     const emit = async (type: AgentEventType, details: Partial<AgentEvent> = {}) => options.eventSink?.emit({
       type, runId, sessionId, conversationId: conversation.conversationId, turnId, modelProfile,
       timestamp: new Date().toISOString(), ...details,
@@ -75,13 +75,24 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
         const state = await this.#sessions.run({
           id: sessionId, course: input.courseContext?.courseCode ?? null, existing: input.conversation !== undefined,
           ...(options.allowCreateSession === true ? { allowCreate: true } : {}),
-        }, () => graph.invoke({
-          messages: [new HumanMessage(input.query)],
-          intent: null, research: null, plan: null, draft: null, review: null, revision: 0, answer: '',
-        }, {
-          configurable: { thread_id: `study-supervisor-v1:${sessionId}` },
-          ...(options.signal === undefined ? {} : { signal: options.signal }),
-        }))
+        }, async () => {
+          const config = {
+            configurable: { thread_id: `study-supervisor-v1:${sessionId}` },
+            durability: 'sync' as const,
+            ...(options.signal === undefined ? {} : { signal: options.signal }),
+          }
+          if (options.allowCreateSession) {
+            const saved = await graph.getState(config)
+            if (saved.values.runId === runId) {
+              if (saved.next.length) return graph.invoke(null, config)
+              if (saved.values.answer) return saved.values
+            }
+          }
+          return graph.invoke({
+            messages: [new HumanMessage(input.query)], runId,
+            intent: null, research: null, plan: null, draft: null, review: null, revision: 0, answer: '',
+          }, config)
+        })
         await emit('model_completed')
         await emit('answer_completed')
         const published = state.answer === state.draft?.answer

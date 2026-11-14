@@ -30,6 +30,7 @@ const researchArtifact = z.object({
 
 export const StudyBlackboard = new StateSchema({
   messages: MessagesValue,
+  runId: z.string().default(''),
   intent: understanding.nullable().default(null),
   research: researchArtifact.nullable().default(null),
   plan: studyPlan.nullable().default(null),
