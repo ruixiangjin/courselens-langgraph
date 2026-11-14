@@ -6,6 +6,7 @@ export * from './lightrag/lightrag-sync-service.js'
 export * from './lightrag/lightrag-worker-client.js'
 export * from './lightrag/lightrag-worker-protocol.js'
 export * from './local/local-knowledge-service.js'
+export * from "./local/hybrid-knowledge.js"
 export * from './normalization/code-normalizer.js'
 export * from './normalization/csv-normalizer.js'
 export * from './normalization/docling-adapter.js'

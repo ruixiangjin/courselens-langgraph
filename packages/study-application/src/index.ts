@@ -13,6 +13,7 @@ import {
   type MemoryEmbeddingProvider,
 } from '@monash-study/memory-service'
 import {
+  HybridKnowledgeService,
   LightRAGKnowledgeService,
   LocalKnowledgeService,
   loadRuntimeConfig,
@@ -84,9 +85,10 @@ export async function createStudyApplication(
     ...(options.configPath === undefined ? {} : { configPath: options.configPath }),
     ...(options.resourceManifestPath === undefined ? {} : { resourceManifestPath: options.resourceManifestPath }),
   })
-  const knowledgeService = options.knowledgeService === undefined
-    ? new LightRAGKnowledgeService({ runtimeConfig })
-    : options.knowledgeService
+  const semantic = options.knowledgeService === undefined ? new LightRAGKnowledgeService({ runtimeConfig }) : undefined
+  const knowledgeService = semantic
+    ? new HybridKnowledgeService(semantic, runtimeConfig.normalizedRoot)
+    : options.knowledgeService ?? null
   const resourceReader = options.resourceReader === undefined
     ? await createResourceReader(options.resourceManifestPath ?? runtimeConfig.resourceManifestPath)
     : options.resourceReader
@@ -167,7 +169,7 @@ export async function createStudyApplication(
         try {
           memoryStore?.close()
         } finally {
-          closeKnowledgeService(knowledgeService)
+          closeKnowledgeService(semantic ?? knowledgeService)
         }
       }
     },
