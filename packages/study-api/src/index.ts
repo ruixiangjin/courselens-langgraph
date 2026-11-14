@@ -90,6 +90,12 @@ export async function createStudyServer(input: {
         }
       })
     })
+    api.get('/turns/:id', async (request, reply) => {
+      const id = idInput.parse(request.params).id
+      const turn = await store.getTurn(id, principal(request.headers.authorization).student)
+      if (!turn) return reply.code(404).send({ error: 'Study turn was not found.' })
+      return { status: turn.status, result: turn.result && studentResult(turn.result) }
+    })
     api.get('/turns/:id/events', async (request, reply) => {
       const id = idInput.parse(request.params).id
       const actor = principal(request.headers.authorization)

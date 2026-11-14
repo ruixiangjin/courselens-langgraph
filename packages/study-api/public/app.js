@@ -16,6 +16,40 @@ function element(tag, text, parent) {
   parent.append(node)
   return node
 }
+async function showProgress(turn, signal) {
+  for (;;) {
+    const response = await fetch('/api/turns/' + turn + '/events', {
+      headers: { authorization: 'Bearer ' + byId('token').value.trim() }, signal,
+    })
+    if (response.status === 404) {
+      await new Promise(resolve => setTimeout(resolve, 120))
+      signal.throwIfAborted()
+      continue
+    }
+    if (!response.ok || !response.body) return
+    const stream = response.body.pipeThrough(new TextDecoderStream()).getReader()
+    try {
+      let pending = ''
+      for (;;) {
+        const { value, done } = await stream.read()
+        if (done || signal.aborted) return
+        pending += value
+        const lines = pending.split('\n')
+        pending = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const event = JSON.parse(line.slice(6))
+          if (event.type === 'subagent_started') status.textContent = '正在核对课程资料…'
+          if (event.subagentName === 'verifier') status.textContent = '正在复核结论和引用…'
+          if (event.subagentName === 'planner') status.textContent = '正在安排复习练习…'
+        }
+      }
+    } finally {
+      await stream.cancel().catch(() => {})
+      stream.releaseLock()
+    }
+  }
+}
 async function approve(id, button, article) {
   button.disabled = true
   try {
@@ -48,6 +82,8 @@ byId('study').addEventListener('submit', async event => {
   sessionStorage.setItem('courselens-sessions', JSON.stringify(Object.fromEntries(sessions)))
   const turn = crypto.randomUUID()
   const question = byId('question').value
+  const progress = new AbortController()
+  void showProgress(turn, progress.signal).catch(() => {})
   try {
     const result = await request('/turns', { session, turn, question, ...(course ? { course } : {}) })
     const article = element('article', '', byId('answers'))
@@ -67,7 +103,7 @@ byId('study').addEventListener('submit', async event => {
     }
     status.textContent = ''
   } catch (error) { status.textContent = error.message }
-  finally { submit.disabled = false }
+  finally { progress.abort(); submit.disabled = false }
 })
 byId('reset').addEventListener('click', () => {
   sessions.delete(byId('course').value.trim().toUpperCase() || 'general')
