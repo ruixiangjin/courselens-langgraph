@@ -6,6 +6,8 @@ import {
   type StudyTurnInput,
 } from '@monash-study/study-core'
 
+import { studyHistory } from './agents/context.js'
+import { studySkill } from './agents/skills.js'
 import { askRole } from './agents/roles.js'
 import { StudyBlackboard, studyDraft, studyPlan, understanding, verification } from './blackboard.js'
 import type { StudyChatModel } from './model.js'
@@ -26,7 +28,7 @@ export function createStudySupervisor(input: {
   const base = { question: turn.query, course, context }
   return new StateGraph(StudyBlackboard)
     .addNode('understand', async (state, config) => {
-      const history = state.messages.slice(-8).map(message => ({ role: message.type, text: message.text.slice(0, 2_000) }))
+      const history = studyHistory(state.messages)
       const result = await askRole(model, profile, config.signal,
         'Role: understanding. Choose intent explain for general concepts, verify_sources for course-specific claims, plan for study planning, verify_and_plan for both, or clarify for missing scope. Output {intent,objective}.',
         { ...base, history }, understanding)
@@ -83,15 +85,18 @@ export function createStudySupervisor(input: {
     .addNode('draft_plan', async (state, config) => {
       const plan = await askRole(model, profile, config.signal,
         'Role: study planner. Use the student time constraints and course evidence. Propose practice, not completed actions. Return {goal, exercises:[{activity,minutes,checkpoint}]}.',
-        { ...base, findings: state.research?.findings, feedback: state.review?.reason }, studyPlan)
+        { ...base, findings: state.research?.findings, feedback: state.review?.reason, skill: studySkill('exam-study-plan') }, studyPlan)
       await emit('study_role_completed', { subagentName: 'planner' })
       return { plan: plan ?? null }
     })
     .addNode('tutor', async (state, config) => {
-      const history = state.messages.slice(-8).map(message => ({ role: message.type, text: message.text.slice(0, 2_000) }))
+      const history = studyHistory(state.messages)
+      const skill = studySkill(/hint|提示|错题|为什么错/iu.test(turn.query)
+        ? 'mistake-review'
+        : state.research ? 'course-source-comparison' : 'concept-explanation')
       const draft = await askRole(model, profile, config.signal,
         'Role: tutor. Explain with a small example. For clarify, ask a focused question. For course claims, cite only the supplied evidence IDs in [id] format and mark unsupported claims as unverified. Return {answer,evidenceIds}.',
-        { ...base, history, intent: state.intent, research: state.research?.findings, limitations: state.research?.limitations, plan: state.plan, feedback: state.review?.reason }, studyDraft)
+        { ...base, history, skill, intent: state.intent, research: state.research?.findings, limitations: state.research?.limitations, plan: state.plan, feedback: state.review?.reason }, studyDraft)
       await emit('study_role_completed', { subagentName: 'tutor' })
       return { draft: draft ?? null }
     })
