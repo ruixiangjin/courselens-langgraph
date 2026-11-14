@@ -19,25 +19,31 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "agent:graph": "node --import tsx scripts/langgraph-study.ts",
-    "checkpoint:init": "node --import tsx scripts/init-checkpoints.ts"
+    "checkpoint:init": "node --import tsx scripts/init-checkpoints.ts",
+    "start": "node --import tsx scripts/courselens-server.ts"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
   "devDependencies": {
+    "@langchain/core": "1.4.0",
     "@types/node": "^22.20.0",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "@langchain/core": "1.4.0"
+    "@types/pg": "^8.23.1",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@monash-study/knowledge-service": "workspace:*",
+    "@monash-study/langgraph-runtime": "workspace:*",
     "@monash-study/memory-service": "workspace:*",
-    "@monash-study/study-application": "workspace:*",
     "@monash-study/shared-types": "workspace:*",
+    "@monash-study/study-application": "workspace:*",
     "@monash-study/study-controller": "workspace:*",
     "@monash-study/study-core": "workspace:*",
-    "@monash-study/langgraph-runtime": "workspace:*"
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "zod": "4.4.3",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "tsx": "^4.22.4"
   },
   "packageManager": "pnpm@12.5.1"
 }

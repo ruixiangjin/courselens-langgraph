@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CourseLens</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+  <header><h1>CourseLens</h1><p>查课程资料、复盘错题、安排下一次练习。</p></header>
+  <label>访问令牌 <input id="token" type="password" autocomplete="off"></label>
+  <form id="study">
+    <label>课程 <input id="course" value="FIT2004" maxlength="24"></label>
+    <label>学习问题 <textarea id="question" required rows="4" placeholder="对照 FIT2004 讲义，解释 BFS 和 DFS，并安排两次练习"></textarea></label>
+    <button type="submit">开始</button>
+    <button type="button" id="reset">新会话</button>
+    <button type="button" id="operator">查看运行记录</button>
+  </form>
+  <p id="status" aria-live="polite"></p>
+  <section id="answers" aria-live="polite"></section>
+  <section id="trace" hidden><h2>运行记录</h2><pre id="events"></pre></section>
+</main><script type="module" src="/app.js"></script></body></html>

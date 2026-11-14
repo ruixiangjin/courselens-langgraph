@@ -5,6 +5,7 @@ interface SessionRequest {
   readonly id: string
   readonly course: string | null
   readonly existing: boolean
+  readonly allowCreate?: boolean
 }
 
 export interface StudySessions {
@@ -15,7 +16,7 @@ export function createMemorySessions(): StudySessions {
   const scopes = new Map<string, string | null>()
   return {
     async run(session, execute) {
-      if (session.existing) {
+      if (session.existing && !(session.allowCreate && !scopes.has(session.id))) {
         assertScope(scopes.has(session.id), scopes.get(session.id), session)
       } else {
         scopes.set(session.id, session.course)
@@ -53,6 +54,12 @@ export class PostgresStudySessions implements StudySessions {
       )
       locked = lock.rows[0]?.locked === true
       if (!locked) throw new StudyRuntimeError('CONCURRENT_RUN', 'This study session already has an active turn.')
+      if (session.allowCreate) {
+        await client.query(
+          'INSERT INTO courselens.graph_sessions (session_id, course) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [session.id, session.course],
+        )
+      }
       if (session.existing) {
         const { rows } = await client.query<{ course: string | null }>(
           'SELECT course FROM courselens.graph_sessions WHERE session_id = $1',

@@ -218,6 +218,7 @@ export interface StudyTurnOptions {
   readonly eventSink?: AgentEventSink
   readonly signal?: AbortSignal
   readonly modelProfile?: ModelProfile
+  readonly allowCreateSession?: boolean
   readonly runId?: string
 }
 

@@ -74,6 +74,7 @@ export class LangGraphStudyRuntime implements StudyAgentRuntime {
         await emit('model_started')
         const state = await this.#sessions.run({
           id: sessionId, course: input.courseContext?.courseCode ?? null, existing: input.conversation !== undefined,
+          ...(options.allowCreateSession === true ? { allowCreate: true } : {}),
         }, () => graph.invoke({
           messages: [new HumanMessage(input.query)],
           intent: null, research: null, plan: null, draft: null, review: null, revision: 0, answer: '',
