@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+lib
+data
+.env
+.env.*
+config/sources.local.json
+config/sources.json

@@ -78,3 +78,20 @@ test('the verifier sends a focused repair back to research and only publishes th
     assert.equal(result.plan?.exercises[0]?.minutes, 15)
   } finally { await app.close() }
 })
+
+test('course verification does not release a draft when evidence is missing', async () => {
+  const app = await createStudyApplication({
+    memoryService: null, resourceReader: null, knowledgeService: null,
+    model: async messages => {
+      const system = messages[0]?.text ?? ''
+      if (system.includes('Role: understanding')) return new AIMessage(JSON.stringify({ intent: 'verify_sources', objective: 'Check the notes' }))
+      if (system.includes('Role: independent verifier')) return new AIMessage(JSON.stringify({ decision: 'accept', reason: 'Model accepted', needsEvidence: false }))
+      return new AIMessage(JSON.stringify({ answer: 'The notes confirm it.', evidenceIds: [] }))
+    },
+  })
+  try {
+    const result = await app.runTurn({ query: 'Check the notes', courseContext: { courseCode: 'FIT2004' } })
+    assert.match(result.answer, /could not verify/)
+    assert.deepEqual(result.evidence, [])
+  } finally { await app.close() }
+})

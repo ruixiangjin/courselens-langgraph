@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: courselens
+      POSTGRES_DB: courselens
+      POSTGRES_PASSWORD: ${COURSELENS_DB_PASSWORD:-courselens-demo-local}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "courselens", "-d", "courselens"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      STUDY_CHECKPOINT_DATABASE_URL: postgresql://courselens:${COURSELENS_DB_PASSWORD:-courselens-demo-local}@postgres:5432/courselens
+      COURSELENS_DEMO: "1"
+      COURSELENS_HOST: 0.0.0.0
+      COURSELENS_STUDENT_TOKEN: ${COURSELENS_STUDENT_TOKEN:?set a student token}
+      COURSELENS_OPERATOR_TOKEN: ${COURSELENS_OPERATOR_TOKEN:?set an operator token}
+    ports:
+      - "127.0.0.1:${COURSELENS_PORT:-8080}:8080"
+volumes:
+  postgres-data:

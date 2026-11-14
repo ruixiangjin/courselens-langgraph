@@ -48,10 +48,11 @@ export function createStudySupervisor(input: {
       const evidence = new Map<string, Evidence>()
       const used = new Set(previous?.tools)
       let actions = previous?.actions ?? 0
+      const focus = state.review?.reason ?? state.intent?.objective ?? turn.query
       const task = {
         taskId,
         course: course.courseCode,
-        objective: state.review?.reason ?? state.intent?.objective ?? turn.query,
+        objective: focus,
         ...(course.week === undefined ? {} : { week: course.week }),
         ...(course.topic === undefined ? {} : { topic: course.topic }),
       }
@@ -121,7 +122,8 @@ export function createStudySupervisor(input: {
       const fallback = /[\u3400-\u9fff]/u.test(turn.query)
         ? '这次未能验证课程依据或草稿。可以补充课程资料或缩小问题范围。'
         : 'I could not verify the course evidence or draft. Please add a source or narrow the question.'
-      const supported = !requiresSources || Boolean(state.draft?.evidenceIds.length)
+      const requiresPlan = state.intent?.intent === 'plan' || state.intent?.intent === 'verify_and_plan'
+      const supported = (!requiresSources || Boolean(state.draft?.evidenceIds.length)) && (!requiresPlan || Boolean(state.plan))
       const answer = verified && supported ? state.draft?.answer ?? fallback : fallback
       return { answer, messages: [new AIMessage(answer)] }
     })
